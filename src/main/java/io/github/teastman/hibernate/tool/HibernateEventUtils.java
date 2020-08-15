@@ -1,7 +1,16 @@
 package io.github.teastman.hibernate.tool;
 
-import org.hibernate.event.spi.*;
+
+import org.hibernate.event.spi.AbstractPreDatabaseOperationEvent;
+import org.hibernate.event.spi.PostDeleteEvent;
+import org.hibernate.event.spi.PostInsertEvent;
+import org.hibernate.event.spi.PostUpdateEvent;
+import org.hibernate.event.spi.PreDeleteEvent;
+import org.hibernate.event.spi.PreInsertEvent;
+import org.hibernate.event.spi.PreUpdateEvent;
+import org.hibernate.event.spi.SaveOrUpdateEvent;
 import org.hibernate.persister.entity.EntityPersister;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 
@@ -10,9 +19,10 @@ import java.util.Arrays;
  *
  * @author Tyler Eastman
  */
+@SuppressWarnings("unused")
 public class HibernateEventUtils {
 
-    public static int getPropertyIndex(AbstractPreDatabaseOperationEvent event, String property){
+    public static int getPropertyIndex(@NotNull AbstractPreDatabaseOperationEvent event, String property){
         return getPropertyIndex(event.getPersister(), property);
     }
 

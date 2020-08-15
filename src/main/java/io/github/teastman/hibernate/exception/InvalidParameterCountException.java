@@ -5,12 +5,12 @@ package io.github.teastman.hibernate.exception;
  *
  * @author Tyler Eastman
  */
-public class InvalidParameterCount extends Exception {
+public class InvalidParameterCountException extends Exception {
 
-    public InvalidParameterCount() {
+    public InvalidParameterCountException() {
     }
 
-    public InvalidParameterCount(String message) {
+    public InvalidParameterCountException(String message) {
         super(message);
     }
 }

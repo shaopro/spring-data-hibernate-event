@@ -3,12 +3,12 @@ package io.github.teastman.hibernate;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.event.service.spi.EventListenerRegistry;
 import org.hibernate.event.spi.EventType;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import javax.annotation.Resource;
 import javax.persistence.EntityManagerFactory;
 
 /**
@@ -21,7 +21,7 @@ import javax.persistence.EntityManagerFactory;
 @ConditionalOnClass(EntityManagerFactory.class)
 public class HibernateEventAutoConfiguration {
 
-    @Autowired
+    @Resource
     private EntityManagerFactory entityManagerFactory;
 
     @Bean

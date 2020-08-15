@@ -2,9 +2,36 @@ package io.github.teastman.hibernate;
 
 import io.github.teastman.hibernate.annotation.HibernateEventListener;
 import io.github.teastman.hibernate.exception.AssignableParameterException;
-import io.github.teastman.hibernate.exception.InvalidParameterCount;
+import io.github.teastman.hibernate.exception.InvalidParameterCountException;
 import org.hibernate.HibernateException;
-import org.hibernate.event.spi.*;
+//import org.hibernate.event.spi.*;
+import org.hibernate.event.spi.AbstractEvent;
+import org.hibernate.event.spi.PostCollectionRecreateEvent;
+import org.hibernate.event.spi.PostCollectionRecreateEventListener;
+import org.hibernate.event.spi.PostCollectionRemoveEvent;
+import org.hibernate.event.spi.PostCollectionRemoveEventListener;
+import org.hibernate.event.spi.PostCollectionUpdateEvent;
+import org.hibernate.event.spi.PostCollectionUpdateEventListener;
+import org.hibernate.event.spi.PostDeleteEvent;
+import org.hibernate.event.spi.PostDeleteEventListener;
+import org.hibernate.event.spi.PostInsertEvent;
+import org.hibernate.event.spi.PostInsertEventListener;
+import org.hibernate.event.spi.PostUpdateEvent;
+import org.hibernate.event.spi.PostUpdateEventListener;
+import org.hibernate.event.spi.PreCollectionRecreateEvent;
+import org.hibernate.event.spi.PreCollectionRecreateEventListener;
+import org.hibernate.event.spi.PreCollectionRemoveEvent;
+import org.hibernate.event.spi.PreCollectionRemoveEventListener;
+import org.hibernate.event.spi.PreCollectionUpdateEvent;
+import org.hibernate.event.spi.PreCollectionUpdateEventListener;
+import org.hibernate.event.spi.PreDeleteEvent;
+import org.hibernate.event.spi.PreDeleteEventListener;
+import org.hibernate.event.spi.PreInsertEvent;
+import org.hibernate.event.spi.PreInsertEventListener;
+import org.hibernate.event.spi.PreUpdateEvent;
+import org.hibernate.event.spi.PreUpdateEventListener;
+import org.hibernate.event.spi.SaveOrUpdateEvent;
+import org.hibernate.event.spi.SaveOrUpdateEventListener;
 import org.hibernate.persister.entity.EntityPersister;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanInitializationException;
@@ -12,6 +39,7 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.lang.NonNull;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -27,6 +55,8 @@ import java.util.List;
  *
  * @author Tyler Eastman
  */
+
+@SuppressWarnings({"unused"})
 public class AnnotatedHibernateEventListenerInvoker implements
         PostCollectionRecreateEventListener,
         PostCollectionRemoveEventListener,
@@ -42,6 +72,8 @@ public class AnnotatedHibernateEventListenerInvoker implements
         PostDeleteEventListener,
         PostUpdateEventListener,
         BeanPostProcessor {
+
+    private final static int PARAMS_NUM = 2;
 
     private final MultiValueMap<Class<?>, EventHandlerMethod> handlerMethods = new LinkedMultiValueMap<>();
 
@@ -116,28 +148,30 @@ public class AnnotatedHibernateEventListenerInvoker implements
     }
 
     private boolean onEvent(AbstractEvent event, Object entity) {
-        if (handlerMethods.get(event.getClass()) == null)
+        if (handlerMethods.get(event.getClass()) == null) {
             return false;
+        }
 
         for (EventHandlerMethod handlerMethod : handlerMethods.get(event.getClass())) {
-            if (ClassUtils.isAssignable(handlerMethod.targetType, entity.getClass()))
+            if (ClassUtils.isAssignable(handlerMethod.targetType, entity.getClass())) {
                 ReflectionUtils.invokeMethod(handlerMethod.method, handlerMethod.bean, entity, event);
+            }
         }
 
         return false;
     }
 
     @Override
-    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+    public Object postProcessBeforeInitialization(@NonNull Object bean, @NonNull String beanName) throws BeansException {
         return bean;
     }
 
     @Override
-    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+    public Object postProcessAfterInitialization(@NonNull Object bean, @NonNull String beanName) throws BeansException {
         for (Method method : ReflectionUtils.getUniqueDeclaredMethods(ClassUtils.getUserClass(bean))) {
             try {
-                register(bean, method, HibernateEventListener.class);
-            } catch (InvalidParameterCount | AssignableParameterException e) {
+                register(bean, method);
+            } catch (InvalidParameterCountException | AssignableParameterException e) {
                 throw new BeanInitializationException("@HibernateEventListener method could not be registered.", e);
             }
         }
@@ -145,18 +179,25 @@ public class AnnotatedHibernateEventListenerInvoker implements
         return bean;
     }
 
-    private <T extends Annotation> void register(Object bean, Method method, Class<T> annotationType) throws InvalidParameterCount, AssignableParameterException {
-        if (AnnotationUtils.findAnnotation(method, annotationType) == null)
+    private <T extends Annotation> void register(Object bean, Method method) throws InvalidParameterCountException, AssignableParameterException {
+        if (AnnotationUtils.findAnnotation(method, HibernateEventListener.class) == null) {
             return;
+        }
 
-        if (method.getParameterCount() != 2)
-            throw new InvalidParameterCount("The method must have exactly 2 parameters.");
+        if (method.getParameterCount() != PARAMS_NUM) {
+            throw new InvalidParameterCountException("The method must have exactly 2 parameters.");
+        }
 
         Class<?> entityClass = ResolvableType.forMethodParameter(method, 0, bean.getClass()).resolve();
         Class<?> eventClass = ResolvableType.forMethodParameter(method, 1, bean.getClass()).resolve();
 
-        if (!ClassUtils.isAssignable(AbstractEvent.class, eventClass))
+        if (null == eventClass) {
+            throw new AssignableParameterException("The first parameter must be of type Object.");
+        }
+
+        if (!ClassUtils.isAssignable(AbstractEvent.class, eventClass)) {
             throw new AssignableParameterException("The second parameter must be of type org.hibernate.event.spi.AbstractEvent.");
+        }
 
         ReflectionUtils.makeAccessible(method);
         EventHandlerMethod handlerMethod = new EventHandlerMethod(entityClass, bean, method);
